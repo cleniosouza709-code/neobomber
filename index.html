@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neo Bomber Elite</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0b0d13; font-family: 'Segoe UI', Roboto, sans-serif; color: #fff; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { background: #131622; display: none; width: 100%; height: 100%; max-width: 100%; max-height: 100%; border: 3px solid #00ffcc; border-radius: 8px; box-shadow: 0 0 30px rgba(0, 255, 204, 0.2); }
+        
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1e30 0%, #080a10 100%); z-index: 10; }
+        h1 { font-size: 3.5rem; margin-bottom: 25px; color: #00ffcc; text-shadow: 0 0 15px rgba(0,255,204,0.6); font-weight: 900; letter-spacing: 5px; }
+        .btn { padding: 14px 35px; font-size: 1.2rem; background: linear-gradient(45deg, #00ffcc, #0077ff); border: none; border-radius: 25px; color: white; cursor: pointer; font-weight: bold; margin: 10px; box-shadow: 0 4px 15px rgba(0,119,255,0.4); transition: 0.2s; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,255,204,0.6); }
+        
+        .currency-status { position: absolute; top: 15px; right: 20px; font-size: 1.2rem; font-weight: bold; color: #ffd700; background: rgba(0,0,0,0.6); padding: 8px 18px; border-radius: 20px; border: 2px solid #ffd700; z-index: 20; display: flex; align-items: center; gap: 8px; }
+        
+        .slots-container { display: flex; gap: 15px; margin: 20px 0 35px 0; }
+        .slot { background: rgba(26, 30, 48, 0.8); padding: 20px; border-radius: 12px; border: 2px dashed #444; width: 110px; text-align: center; font-weight: bold; color: #555; transition: all 0.3s ease; }
+        .slot.ready { border: 2px solid #00ffcc; color: #00ffcc; box-shadow: 0 0 15px rgba(0, 255, 204, 0.3); background: #1a1e30; }
+
+        .modal { display: none; flex-direction: column; width: 85%; height: 85%; background: #121520; border: 3px solid #00ffcc; border-radius: 12px; padding: 25px; position: absolute; top: 7.5%; left: 7.5%; z-index: 30; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        .grid-skins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; overflow-y: auto; padding-right: 5px; }
+        .skin-card { background: #1a1e30; border: 2px solid #2d3550; border-radius: 10px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .skin-card.selected { border-color: #ffd700; background: #222842; }
+        .close-btn { position: absolute; top: 15px; right: 15px; background: #ff3355; border: none; color: white; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        
+        #controls { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #joystick-zone { position: absolute; bottom: 35px; left: 45px; width: 120px; height: 120px; background: rgba(255,255,255,0.08); border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); pointer-events: auto; display: flex; justify-content: center; align-items: center; }
+        #joystick-stick { width: 50px; height: 50px; background: radial-gradient(circle, #00ffcc, #0077ff); border-radius: 50%; box-shadow: 0 0 10px rgba(0,255,204,0.5); }
+        #action-btn { position: absolute; bottom: 35px; right: 45px; width: 95px; height: 95px; background: linear-gradient(135deg, #ff0055, #cc0033); border-radius: 50%; border: 3px solid #fff; pointer-events: auto; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 6px 20px rgba(255,0,85,0.4); text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        #action-btn:active { transform: scale(0.92); }
+
+        #rotate-warning { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #080a10; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
+        @media (orientation: portrait) { #rotate-warning { display: flex; } }
+    </style>
+</head>
+<body>
+
+<div id="rotate-warning">
+    <div style="font-size: 4rem; margin-bottom: 20px;">🔄</div>
+    <h2>Por favor, deite a tela do seu celular!</h2>
+    <p style="color: #666; margin-top: 10px;">Ative a rotação automática do aparelho para jogar.</p>
+</div>
+
+<div id="game-container">
+    <div class="currency-status">💎 <span id="gem-count">100</span></div>
+
+    <!-- Menu Principal -->
+    <div id="menu-screen" class="screen">
+        <h1>NEO BOMBER</h1>
+        <button class="btn" onclick="startLobby()">Jogar Partida</button>
+        <button class="btn" onclick="openStore()">Loja de Skins (50% OFF)</button>
+    </div>
+
+    <!-- Sala de Espera Dinâmica (4 Pessoas) -->
+    <div id="lobby-screen" class="screen" style="display:none;">
+        <h1>SALA DE ESPERA</h1>
+        <div id="lobby-status" style="font-size: 1.3rem; color: #00ffcc;">Buscando jogadores rivais...</div>
+        
+        <div class="slots-container">
+            <div id="slot-1" class="slot ready">P1 (Você)</div>
+            <div id="slot-2" class="slot">Livre</div>
+            <div id="slot-3" class="slot">Livre</div>
+            <div id="slot-4" class="slot">Livre</div>
+        </div>
+
+        <button class="btn" style="background: #ff3355;" onclick="cancelLobby()">Sair da Sala</button>
+    </div>
+
+    <!-- Loja de Skins -->
+    <div id="store-modal" class="modal">
+        <button class="close-btn" onclick="closeStore()">X</button>
+        <h2 style="color: #00ffcc; border-bottom: 2px solid #2d3550; padding-bottom: 10px;">Loja Especial</h2>
+        <div class="grid-skins">
+            <div class="skin-card selected"><h3>Skin Clássica</h3><p style="color:#ffd700;">Equipado</p></div>
+            <div class="skin-card"><h3>Neo Neon</h3><p style="color:#ffd700;">💎 50</p></div>
+            <div class="skin-card"><h3>Cyber Pyro</h3><p style="color:#ffd700;">💎 80</p></div>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo Ativo -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Controles Virtuais Touch -->
+    <div id="controls">
+        <div id="joystick-zone">
+            <div id="joystick-stick"></div>
+        </div>
+        <div id="action-btn">BOMBA</div>
+    </div>
+</div>
+
+<script>
+    let lobbyTimer = null;
+    let playersConnected = 1;
+
+    function startLobby() {
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('lobby-screen').style.display = 'flex';
+        resetLobbySlots();
+        
+        playersConnected = 1;
+        lobbyTimer = setInterval(() => {
+            playersConnected++;
+            if (playersConnected <= 4) {
+                let slot = document.getElementById(`slot-${playersConnected}`);
+                slot.innerText = `P${playersConnected} Rival`;
+                slot.classList.add('ready');
+                document.getElementById('lobby-status').innerText = `Jogadores na Sala: (${playersConnected}/4)`;
+            }
+            
+            if (playersConnected === 4) {
+                clearInterval(lobbyTimer);
+                document.getElementById('lobby-status').innerText = "Partida Iniciando em 2s...";
+                setTimeout(startGamePlay, 2000);
+            }
+        }, 1500);
+    }
+
+    function cancelLobby() {
+        clearInterval(lobbyTimer);
+        document.getElementById('lobby-screen').style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'flex';
+    }
+
+    function resetLobbySlots() {
+        document.getElementById('lobby-status').innerText = "Buscando jogadores rivais...";
+        for (let i = 2; i <= 4; i++) {
+            let slot = document.getElementById(`slot-${i}`);
+            slot.innerText = "Livre";
+            slot.classList.remove('ready');
+        }
+    }
+
+    function startGamePlay() {
+        document.getElementById('lobby-screen').style.display = 'none';
+        document.getElementById('gameCanvas').style.display = 'block';
+        document.getElementById('controls').style.display = 'block';
+        initCanvas();
+    }
+
+    function openStore() { document.getElementById('store-modal').style.display = 'flex'; }
+    function closeStore() { document.getElementById('store-modal').style.display = 'none'; }
+
+    function initCanvas() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        ctx.fillStyle = '#131622';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#00ffcc';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('Arena Pronta! Aguardando lógica de movimentação...', 50, canvas.height/2);
+    }
+</script>
+
+</body>
+</html>
